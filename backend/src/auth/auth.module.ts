@@ -8,6 +8,7 @@ import type { StringValue } from 'ms';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtStrategy } from './jwt.strategy';
+import { GoogleStrategy } from './strategies/google.strategy';
 import { DatabaseModule } from '../database/database.module';
 
 @Module({
@@ -27,6 +28,6 @@ import { DatabaseModule } from '../database/database.module';
         DatabaseModule,
     ],
     controllers: [AuthController],
-    providers: [AuthService, JwtStrategy],
+    providers: [AuthService, JwtStrategy, GoogleStrategy],
 })
 export class AuthModule { }

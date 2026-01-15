@@ -79,4 +79,68 @@ export class AuthService {
 
         return { accessToken };
     }
+
+    async handleGoogleLogin(googleUser: any) {
+        // Check if user exists by email
+        const users = await this.db.query(
+            `SELECT id, email, full_name FROM users WHERE email = $1`,
+            [googleUser.email],
+        );
+
+        let user;
+
+        if (users.length > 0) {
+            // User exists, check if they have Google provider
+            user = users[0];
+
+            const providers = await this.db.query(
+                `SELECT id FROM auth_providers WHERE user_id = $1 AND provider = 'google'`,
+                [user.id],
+            );
+
+            // If Google provider doesn't exist, add it (no password for OAuth)
+            if (providers.length === 0) {
+                await this.db.query(
+                    `
+          INSERT INTO auth_providers (user_id, provider)
+          VALUES ($1, 'google')
+          `,
+                    [user.id],
+                );
+            }
+        } else {
+            // Create new user from Google profile
+            const fullName = `${googleUser.firstName} ${googleUser.lastName}`;
+
+            const [newUser] = await this.db.query(
+                `
+        INSERT INTO users (email, full_name)
+        VALUES ($1, $2)
+        RETURNING id, email, full_name
+        `,
+                [googleUser.email, fullName],
+            );
+
+            user = newUser;
+
+            // Add Google provider (no password for OAuth users)
+            await this.db.query(
+                `
+        INSERT INTO auth_providers (user_id, provider)
+        VALUES ($1, 'google')
+        `,
+                [user.id],
+            );
+        }
+
+        // Generate JWT token
+        const payload = {
+            sub: user.id,
+            email: user.email,
+        };
+
+        const accessToken = this.jwtService.sign(payload);
+
+        return { accessToken, user };
+    }
 }
